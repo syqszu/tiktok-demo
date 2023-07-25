@@ -24,3 +24,10 @@ go.work
 
 # Video storage
 public
+
+# 1024 code
+.1024.nix
+.1024nix
+.1024feature*
+.nfs*
+node_modules
