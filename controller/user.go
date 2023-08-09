@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var usersLoginInfo = map[string]User{
@@ -63,8 +64,17 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	// 在数据库中插入用户信息
-	result, err := db.Exec("INSERT INTO users (username, password) VALUES (?, ?)", username, password)
+	// 使用 bcrypt 对密码进行哈希处理
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, UserLoginResponse{
+			Response: Response{StatusCode: 2, StatusMsg: "注册失败，请重试"},
+		})
+		return
+	}
+
+	// 在数据库中插入用户信息，同时存储哈希后的密码
+	result, err := db.Exec("INSERT INTO users (username, password) VALUES (?, ?)", username, hashedPassword)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, UserLoginResponse{
 			Response: Response{StatusCode: 2, StatusMsg: "注册失败，请重试"},
