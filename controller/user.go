@@ -1,14 +1,14 @@
 package controller
 
 import (
-	"github.com/gin-gonic/gin"
+	"database/sql"
 	"net/http"
 	"sync/atomic"
+
+	"github.com/gin-gonic/gin"
+	_ "github.com/go-sql-driver/mysql"
 )
 
-// usersLoginInfo use map to store user info, and key is username+password for demo
-// user data will be cleared every time the server starts
-// test data: username=zhanglei, password=douyin
 var usersLoginInfo = map[string]User{
 	"zhangleidouyin": {
 		Id:            1,
@@ -32,53 +32,103 @@ type UserResponse struct {
 	User User `json:"user"`
 }
 
+var (
+	db *sql.DB // MySQL数据库连接
+)
+
+// InitializeDB 初始化数据库连接
+func InitializeDB() {
+	var err error
+
+	db, err = sql.Open("mysql", "root:123456@tcp(127.0.0.1:3306)/douyin")
+	if err != nil {
+		panic(err)
+	}
+}
+
+// Register 处理用户注册
 func Register(c *gin.Context) {
+	// 从查询参数中获取用户名和密码
 	username := c.Query("username")
 	password := c.Query("password")
 
+	// 生成用户token
 	token := username + password
 
+	// 检查用户是否已存在
 	if _, exist := usersLoginInfo[token]; exist {
 		c.JSON(http.StatusOK, UserLoginResponse{
-			Response: Response{StatusCode: 1, StatusMsg: "User already exist"},
+			Response: Response{StatusCode: 1, StatusMsg: "用户已存在"},
 		})
-	} else {
-		atomic.AddInt64(&userIdSequence, 1)
-		newUser := User{
-			Id:   userIdSequence,
-			Name: username,
-		}
-		usersLoginInfo[token] = newUser
-		c.JSON(http.StatusOK, UserLoginResponse{
-			Response: Response{StatusCode: 0},
-			UserId:   userIdSequence,
-			Token:    username + password,
-		})
+		return
 	}
+
+	// 在数据库中插入用户信息
+	result, err := db.Exec("INSERT INTO users (username, password) VALUES (?, ?)", username, password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, UserLoginResponse{
+			Response: Response{StatusCode: 2, StatusMsg: "注册失败，请重试"},
+		})
+		return
+	}
+
+	// 获取插入的用户ID
+	userID, _ := result.LastInsertId()
+
+	// 更新用户信息到内存映射
+	atomic.AddInt64(&userIdSequence, 1)
+	newUser := User{
+		Id:   userID,
+		Name: username,
+	}
+	usersLoginInfo[token] = newUser
+
+	// 返回注册成功响应
+	c.JSON(http.StatusOK, UserLoginResponse{
+		Response: Response{StatusCode: 0},
+		UserId:   userID,
+		Token:    token,
+	})
 }
 
+// Login 处理用户登录
 func Login(c *gin.Context) {
+	// 从查询参数中获取用户名和密码
 	username := c.Query("username")
 	password := c.Query("password")
 
+	// 生成用户token
 	token := username + password
 
-	if user, exist := usersLoginInfo[token]; exist {
+	// 在数据库中查询用户
+	var userID int64
+	err := db.QueryRow("SELECT id FROM users WHERE username = ? AND password = ?", username, password).Scan(&userID)
+	if err != nil {
 		c.JSON(http.StatusOK, UserLoginResponse{
-			Response: Response{StatusCode: 0},
-			UserId:   user.Id,
-			Token:    token,
+			Response: Response{StatusCode: 1, StatusMsg: "用户不存在或密码错误"},
 		})
-	} else {
-		c.JSON(http.StatusOK, UserLoginResponse{
-			Response: Response{StatusCode: 1, StatusMsg: "User doesn't exist"},
-		})
+		return
 	}
+
+	// 更新用户信息到内存映射
+	usersLoginInfo[token] = User{
+		Id: userID,
+	}
+
+	// 返回登录成功响应
+	c.JSON(http.StatusOK, UserLoginResponse{
+		Response: Response{StatusCode: 0},
+		UserId:   userID,
+		Token:    token,
+	})
 }
 
+// UserInfo 获取用户信息
 func UserInfo(c *gin.Context) {
+	// 从查询参数中获取用户token
 	token := c.Query("token")
 
+	// 从内存映射中获取用户信息
 	if user, exist := usersLoginInfo[token]; exist {
 		c.JSON(http.StatusOK, UserResponse{
 			Response: Response{StatusCode: 0},
@@ -86,7 +136,7 @@ func UserInfo(c *gin.Context) {
 		})
 	} else {
 		c.JSON(http.StatusOK, UserResponse{
-			Response: Response{StatusCode: 1, StatusMsg: "User doesn't exist"},
+			Response: Response{StatusCode: 1, StatusMsg: "用户不存在"},
 		})
 	}
 }
