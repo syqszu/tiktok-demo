@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/RaymondCode/simple-demo/service"
-	"github.com/RaymondCode/simple-demo/Loginpb"
 	"github.com/gin-gonic/gin"
+	"github.com/syqszu/tiktok-demo/Loginpb"
+	"github.com/syqszu/tiktok-demo/service"
 
 	"gorm.io/driver/mysql" //加入mysql
 	"gorm.io/gorm"         //加入grom
@@ -44,9 +44,9 @@ func main() {
 	//2.名称变成复数问题
 	//AutoMigrate 会创建表、缺失的外键、约束、列和索引
 	//登录注册信息
-	db.AutoMigrate(&Loginpb.DouyinUserLoginRequest{})     //创建登录请求表
-	db.AutoMigrate(&Loginpb.DouyinUserLoginResponse{})    //创建登录响应表
-	db.AutoMigrate(&Loginpb.User{}) //创建用户信息表
+	db.AutoMigrate(&Loginpb.DouyinUserLoginRequest{})  //创建登录请求表
+	db.AutoMigrate(&Loginpb.DouyinUserLoginResponse{}) //创建登录响应表
+	db.AutoMigrate(&Loginpb.User{})                    //创建用户信息表
 
 	//创建接口
 	r := gin.Default()
