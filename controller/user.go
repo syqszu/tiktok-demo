@@ -129,14 +129,32 @@ func UserInfo(c *gin.Context) {
 	token := c.Query("token")
 
 	// 从内存映射中获取用户信息
-	if user, exist := usersLoginInfo[token]; exist {
-		c.JSON(http.StatusOK, UserResponse{
-			Response: Response{StatusCode: 0},
-			User:     user,
-		})
-	} else {
+	user, exist := usersLoginInfo[token]
+	if !exist {
 		c.JSON(http.StatusOK, UserResponse{
 			Response: Response{StatusCode: 1, StatusMsg: "用户不存在"},
 		})
+		return
 	}
+
+	// 构建响应消息
+	response := UserResponse{
+		Response: Response{StatusCode: 0},
+		User: User{
+			Id:              user.Id,
+			Name:            user.Name,
+			FollowCount:     user.FollowCount,
+			FollowerCount:   user.FollowerCount,
+			IsFollow:        user.IsFollow,
+			Avatar:          user.Avatar,
+			BackgroundImage: user.BackgroundImage,
+			Signature:       user.Signature,
+			TotalFavorited:  user.TotalFavorited,
+			WorkCount:       user.WorkCount,
+			FavoriteCount:   user.FavoriteCount,
+		},
+	}
+
+	// 返回响应
+	c.JSON(http.StatusOK, response)
 }
