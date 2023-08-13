@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"database/sql"
 	"net/http"
 	"sync/atomic"
 
@@ -31,20 +30,6 @@ type UserLoginResponse struct {
 type UserResponse struct {
 	Response
 	User User `json:"user"`
-}
-
-var (
-	db *sql.DB // MySQL数据库连接
-)
-
-// InitializeDB 初始化数据库连接
-func InitializeDB() {
-	var err error
-
-	db, err = sql.Open("mysql", "root:123456@tcp(127.0.0.1:3306)/douyin")
-	if err != nil {
-		panic(err)
-	}
 }
 
 // Register 处理用户注册
