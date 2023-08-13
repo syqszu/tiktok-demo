@@ -20,7 +20,7 @@ var usersLoginInfo = map[string]User{
 	},
 }
 
-var userIdSequence = int64(1)
+var userIdSequence = int64(0) //变成从0开始
 
 type UserLoginResponse struct {
 	Response
@@ -55,6 +55,20 @@ func Register(c *gin.Context) {
 
 	// 生成用户token
 	token := username + password
+	//先判断数据库中是否存在该数据
+	var List Loginpb.DouyinUserLoginResponse
+	db.Where("token = ? ", token).Find(&List)
+	if List.Token != nil { //如果数据库中存在该数据，将数据传入结构体
+		if _, exist := usersLoginInfo[token]; !exist { //如果结构体中不存在该用户
+			var dataUsers Loginpb.User
+			db.Where("id = ? ", token).Find(&dataUsers)
+			NewUser := User{
+				Id:   *List.UserId,
+				Name: *dataUsers.Name,
+			}
+			usersLoginInfo[*List.Token] = NewUser //将数据传入结构体
+		}
+	}
 
 	// 检查用户是否已存在
 	if _, exist := usersLoginInfo[token]; exist {
@@ -114,23 +128,44 @@ func Login(c *gin.Context) {
 	var userID int64
 	err := db.QueryRow("SELECT id FROM users WHERE username = ? AND password = ?", username, password).Scan(&userID)
 	if err != nil {
+		var dataList Loginpb.DouyinUserLoginResponse
+		db.Where("token = ?", token).Find(&dataList)
+
+		if dataList.Token != nil { //如果数据库中存在该用户，如果临时结构体不存在该用户的话，将该用户添加进结构体
+			var dataUser Loginpb.User
+			db.Where("id = ?", *dataList.UserId).Find(&dataUser)
+			if _, exist := usersLoginInfo[token]; !exist { //如果结构体中不存在该用户
+				usersLoginInfo[token] = User{
+					Id:   *dataList.UserId,
+					Name: *dataUser.Name,
+				}
+				c.JSON(http.StatusOK, UserLoginResponse{ //返回用户id和Token
+					Response: Response{StatusCode: 0},
+					UserId:   *dataList.UserId,
+					Token:    *dataList.Token,
+				})
+			}
+		}
+		//结构体操作
+		if user, exist := usersLoginInfo[token]; exist {
+			c.JSON(http.StatusOK, UserLoginResponse{
+				Response: Response{StatusCode: 1, StatusMsg: "用户不存在或密码错误"},
+			})
+			return
+		}
+
+		// 更新用户信息到内存映射
+		usersLoginInfo[token] = User{
+			Id: userID,
+		}
+
+		// 返回登录成功响应
 		c.JSON(http.StatusOK, UserLoginResponse{
-			Response: Response{StatusCode: 1, StatusMsg: "用户不存在或密码错误"},
+			Response: Response{StatusCode: 0},
+			UserId:   userID,
+			Token:    token,
 		})
-		return
 	}
-
-	// 更新用户信息到内存映射
-	usersLoginInfo[token] = User{
-		Id: userID,
-	}
-
-	// 返回登录成功响应
-	c.JSON(http.StatusOK, UserLoginResponse{
-		Response: Response{StatusCode: 0},
-		UserId:   userID,
-		Token:    token,
-	})
 }
 
 // UserInfo 获取用户信息
