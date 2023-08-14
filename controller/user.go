@@ -2,23 +2,16 @@ package controller
 
 import (
 	"fmt"
-	"net/http"
-	"sync/atomic"
-
 	"github.com/gin-gonic/gin"
-	"github.com/syqszu/tiktok-demo/Loginpb"
-
-	"gorm.io/driver/mysql" //加入mysql
-	"gorm.io/gorm"         //加入grom
-	"gorm.io/gorm/schema"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+	"net/http"
+	"strconv"
 )
 
-// usersLoginInfo use map to store user info, and key is username+password for demo
-// user data will be cleared every time the server starts
-// test data: username=zhanglei, password=douyin
-var usersLoginInfo = map[string]User{}
+var usersLoginInfo = map[string]User{
 
-var userIdSequence = int64(0) //变成从0开始
+}
 
 type UserLoginResponse struct {
 	Response
@@ -28,157 +21,145 @@ type UserLoginResponse struct {
 
 type UserResponse struct {
 	Response
-	User User `json:"user"`
+	User     User `json:"user"`
+	IsFollow bool `json:"is_follow,omitempty"`
 }
 
-// 注册函数
+type UserRegisterResponse struct {
+	Response
+	UserId int64  `json:"user_id,omitempty"`
+	Token  string `json:"token"`
+}
+
+func ReturnError(c *gin.Context, msg string, errCode int32) {
+	c.JSON(http.StatusBadRequest, UserRegisterResponse{
+		Response: Response{StatusCode: errCode, StatusMsg: msg},
+	})
+}
+
+// user/register 处理用户注册
 func Register(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
 
-	dsn := "root:123456@tcp(127.0.0.1:3306)/douyindemo?charset=utf8mb4&parseTime=True&loc=Local" //一般数据库的连接都是127.0.0.1:3306,不用改
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		NamingStrategy: schema.NamingStrategy{
-			SingularTable: true, // 使用单数表名，启用此选项后，“User”的表将为“Users”
-		},
-	})
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(db)
-
+	// 从参数中获取用户名和密码
 	username := c.Query("username")
-	password := c.Query("password")
+	password := c.Query("password") // QUESTION: 是不是应该从请求体中获取用户名和密码？
 
-	token := username + password
-	//先判断数据库中是否存在该数据
-	var List Loginpb.DouyinUserLoginResponse
-	db.Where("token = ? ", token).Find(&List)
-	if List.Token != nil { //如果数据库中存在该数据，将数据传入结构体
-		if _, exist := usersLoginInfo[token]; !exist { //如果结构体中不存在该用户
-			var dataUsers Loginpb.User
-			db.Where("id = ? ", token).Find(&dataUsers)
-			NewUser := User{
-				Id:   *List.UserId,
-				Name: *dataUsers.Name,
-			}
-			usersLoginInfo[*List.Token] = NewUser //将数据传入结构体
-		}
+	// 校验是否已存在该用户名
+	var count int64
+	db.Where(User{Name: username}).Count(&count)
+	if count != 0 {
+		ReturnError(c, "用户已存在", 1)
+		return
 	}
 
-	if _, exist := usersLoginInfo[token]; exist {
-		c.JSON(http.StatusOK, UserLoginResponse{
-			Response: Response{StatusCode: 1, StatusMsg: "User already exist"},
-		})
-	} else { //如果不存在将其加入数据库，同时放入临时结构体
-
-		//这部步是更新id
-		var result Loginpb.User
-		db.Model(&Loginpb.User{}).Order("id desc").First(&result) //
-		//Model是你要查询的模型名称，id是模型中的ID字段名。使用Order("id desc")可以按照ID字段的降序排序，然后使用First方法取得第一条结果，即具有最大ID值的数据。
-		if result.Id != nil {
-			userIdSequence = *result.Id //如果这条不是第一条数据
-		}
-		atomic.AddInt64(&userIdSequence, 1) //更新id
-
-		//请求的注册数据
-		request := Loginpb.DouyinUserLoginRequest{
-			Username: &username,
-			Password: &password,
-		}
-		//需要返回的注册数据
-		statusMsg := "注册成功"
-		var statusCode int32
-		statusCode = 1
-		response := Loginpb.DouyinUserLoginResponse{
-			UserId:     &userIdSequence,
-			Token:      &token,
-			StatusCode: &statusCode,
-			StatusMsg:  &statusMsg,
-		}
-		users := Loginpb.User{
-			Id:   &userIdSequence,
-			Name: &username,
-		}
-		db.Create(&request)  //将注册信息传进数据库
-		db.Create(&response) //将注册响应信息传进数据库
-		db.Create(&users)    //user
-		//
-		//结构体操作
-
-		newUser := User{
-			Id:   userIdSequence,
-			Name: username,
-		}
-		usersLoginInfo[token] = newUser
-		c.JSON(http.StatusOK, UserLoginResponse{
-			Response: Response{StatusCode: 0},
-			UserId:   userIdSequence,
-			Token:    username + password,
-		})
+	// 生成用户token
+	tokenBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		ReturnError(c, "注册失败，请重试", 2)
+		fmt.Printf("Generate token error: %v", err)
+		return
 	}
+	token := string(tokenBytes)
+
+	// 在数据库中注册新用户
+	newUser := User{
+		Name:  username,
+		Token: token,
+	}
+	result := db.Create(&newUser)
+	if result.Error != nil {
+		ReturnError(c, "注册失败，请重试", 2)
+		fmt.Printf("Insert user error: %v", result.Error)
+		return
+	}
+	fmt.Printf("Created user with ID = %d", newUser.Id)
+
+	// 更新用户信息到内存映射
+	usersLoginInfo[newUser.Name] = newUser
+
+	// 返回注册成功响应
+	c.JSON(http.StatusOK, UserLoginResponse{
+		Response: Response{StatusCode: 0},
+		UserId:   newUser.Id,
+		Token:    token,
+	})
 }
 
-// 登录操作，先在数据库搜索是否存在
+// Login 处理用户登录
 func Login(c *gin.Context) {
-	//打开数据库
-	dsn := "root:123456@tcp(127.0.0.1:3306)/douyindemo?charset=utf8mb4&parseTime=True&loc=Local" //一般数据库的连接都是127.0.0.1:3306,不用改
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		NamingStrategy: schema.NamingStrategy{
-			SingularTable: true, // 使用单数表名，启用此选项后，“User”的表将为“Users”
-		},
-	})
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(db)
+	db := c.MustGet("db").(*gorm.DB)
 
+	// 从查询参数中获取用户名和密码
 	username := c.Query("username")
 	password := c.Query("password")
 
-	token := username + password
+	// 校验用户信息
 
-	var dataList Loginpb.DouyinUserLoginResponse
-	db.Where("token = ?", token).Find(&dataList)
-	if dataList.Token != nil { //如果数据库中存在该用户，如果临时结构体不存在该用户的话，将该用户添加进结构体
-		var dataUser Loginpb.User
-		db.Where("id = ?", *dataList.UserId).Find(&dataUser)
-		if _, exist := usersLoginInfo[token]; !exist { //如果结构体中不存在该用户
-			usersLoginInfo[token] = User{
-				Id:   *dataList.UserId,
-				Name: *dataUser.Name,
-			}
-			c.JSON(http.StatusOK, UserLoginResponse{ //返回用户id和Token
-				Response: Response{StatusCode: 0},
-				UserId:   *dataList.UserId,
-				Token:    *dataList.Token,
-			})
-		}
+	// 校验用户名
+	if username == "" {
+		ReturnError(c, "用户名不能为空", 1)
+		return
 	}
-	//结构体操作
-	if user, exist := usersLoginInfo[token]; exist {
-		c.JSON(http.StatusOK, UserLoginResponse{
-			Response: Response{StatusCode: 0},
-			UserId:   user.Id,
-			Token:    token,
-		})
-	} else {
-		c.JSON(http.StatusOK, UserLoginResponse{
-			Response: Response{StatusCode: 1, StatusMsg: "User doesn't exist"},
-		})
+
+	var user User
+	result := db.Where(User{Name: username}).First(&user)
+	if result.Error != nil {
+		ReturnError(c, "用户不存在", 2)
+		return
 	}
+
+	// 校验密码
+	err := bcrypt.CompareHashAndPassword([]byte(user.Token), []byte(password))
+	if err != nil {
+		ReturnError(c, "密码错误", 3)
+		return
+	}
+
+	// 返回登录成功响应
+	c.JSON(http.StatusOK, UserLoginResponse{
+		Response: Response{StatusCode: 0},
+		UserId:   user.Id,
+		Token:    user.Token,
+	})
 }
 
+// UserInfo 获取用户信息
 func UserInfo(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
 
-	token := c.Query("token")
+	// 获取用户ID
+	userId := c.Query("user_id")
 
-	if user, exist := usersLoginInfo[token]; exist {
-		c.JSON(http.StatusOK, UserResponse{
-			Response: Response{StatusCode: 0},
-			User:     user,
-		})
-	} else {
-		c.JSON(http.StatusOK, UserResponse{
-			Response: Response{StatusCode: 1, StatusMsg: "User doesn't exist"},
-		})
+	id, err := strconv.ParseInt(userId, 10, 64)
+	if err != nil {
+		ReturnError(c, "无效用户ID", 1)
+		return
 	}
+
+	// 查询用户信息
+	var user User
+	result := db.Where(User{Id: id}).First(&user)
+	if result.Error != nil {
+		ReturnError(c, "用户不存在", 2)
+		return
+	}
+
+	// 返回响应
+	c.JSON(http.StatusOK, UserResponse{
+		Response: Response{StatusCode: 0},
+		User: User{
+			Id:              user.Id,
+			Name:            user.Name,
+			FollowCount:     user.FollowCount,
+			FollowerCount:   user.FollowerCount,
+			Avatar:          user.Avatar,
+			BackgroundImage: user.BackgroundImage,
+			Signature:       user.Signature,
+			TotalFavorited:  user.TotalFavorited,
+			WorkCount:       user.WorkCount,
+			FavoriteCount:   user.FavoriteCount,
+		},
+		IsFollow: true,
+	})
 }

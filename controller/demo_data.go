@@ -26,5 +26,4 @@ var DemoUser = User{
 	Name:          "TestUser",
 	FollowCount:   0,
 	FollowerCount: 0,
-	IsFollow:      false,
 }
