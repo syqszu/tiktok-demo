@@ -10,12 +10,7 @@ import (
 )
 
 var usersLoginInfo = map[string]User{
-	"zhangleidouyin": {
-		Id:            1,
-		Name:          "zhanglei",
-		FollowCount:   10,
-		FollowerCount: 5,
-	},
+
 }
 
 type UserLoginResponse struct {
@@ -34,14 +29,6 @@ type UserRegisterResponse struct {
 	Response
 	UserId int64  `json:"user_id,omitempty"`
 	Token  string `json:"token"`
-}
-
-func GenerateToken(username string, password string) (string, error) {
-	// 使用 bcrypt 对密码进行哈希处理
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	// 生成 token
-	token := username + string(hashedPassword)
-	return token, err
 }
 
 func ReturnError(c *gin.Context, msg string, errCode int32) {
@@ -67,12 +54,13 @@ func Register(c *gin.Context) {
 	}
 
 	// 生成用户token
-	token, err := GenerateToken(username, password)
+	tokenBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		ReturnError(c, "注册失败，请重试", 2)
 		fmt.Printf("Generate token error: %v", err)
 		return
 	}
+	token := string(tokenBytes)
 
 	// 在数据库中注册新用户
 	newUser := User{
@@ -106,17 +94,14 @@ func Login(c *gin.Context) {
 	username := c.Query("username")
 	password := c.Query("password")
 
-	// 计算用户token
-	token, err := GenerateToken(username, password)
-	if err != nil {
-		ReturnError(c, "登录失败，请重试", 2)
-		fmt.Printf("Generate token error: %v", err)
-		return
-	}
-
 	// 校验用户信息
 
 	// 校验用户名
+	if username == "" {
+		ReturnError(c, "用户名不能为空", 1)
+		return
+	}
+
 	var user User
 	result := db.Where(User{Name: username}).First(&user)
 	if result.Error != nil {
@@ -125,7 +110,8 @@ func Login(c *gin.Context) {
 	}
 
 	// 校验密码
-	if token != user.Token {
+	err := bcrypt.CompareHashAndPassword([]byte(user.Token), []byte(password))
+	if err != nil {
 		ReturnError(c, "密码错误", 3)
 		return
 	}
@@ -134,7 +120,7 @@ func Login(c *gin.Context) {
 	c.JSON(http.StatusOK, UserLoginResponse{
 		Response: Response{StatusCode: 0},
 		UserId:   user.Id,
-		Token:    token,
+		Token:    user.Token,
 	})
 }
 

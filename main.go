@@ -5,18 +5,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/syqszu/tiktok-demo/controller"
 	"github.com/syqszu/tiktok-demo/service"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
-
-type User struct {
-	ID       uint   `gorm:"primaryKey"`
-	Username string `gorm:"unique"`
-	Password string
-}
-
-var db *gorm.DB
 
 func main() {
 	// 建立数据库连接
@@ -25,7 +18,7 @@ func main() {
 	if err != nil {
 		panic("Failed to connect to the database: " + err.Error())
 	}
-	fmt.Printf("Connected to the database %s", db)
+	fmt.Println("Connected to the database")
 
 	// 配置连接池
 	sqlDB, err := db.DB()
@@ -38,7 +31,7 @@ func main() {
 	sqlDB.SetConnMaxLifetime(10 * time.Second) // 设置连接可以重复使用的最长时间：10s
 
 	// 自动迁移数据结构
-	err = db.AutoMigrate(&User{})
+	err = db.AutoMigrate(&controller.User{})
 	if err != nil {
 		panic("Failed to migrate table: users\n" + err.Error())
 	}
