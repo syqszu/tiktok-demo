@@ -27,7 +27,6 @@ type User struct {
 	Name            string `json:"name,omitempty"`
 	FollowCount     int64  `json:"follow_count,omitempty"`
 	FollowerCount   int64  `json:"follower_count,omitempty"`
-	// IsFollow        bool   `json:"is_follow,omitempty"` // 应该作为UserResponse的一部分，表示请求的用户是否关注这个用户
 	Avatar          string `json:"avatar,omitempty"`
 	BackgroundImage string `json:"background_image,omitempty"`
 	Signature       string `json:"signature,omitempty"`

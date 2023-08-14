@@ -5,8 +5,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"log"
 	"net/http"
+	"strconv"
 )
 
 var usersLoginInfo = map[string]User{
@@ -26,7 +26,8 @@ type UserLoginResponse struct {
 
 type UserResponse struct {
 	Response
-	User User `json:"user"`
+	User     User `json:"user"`
+	IsFollow bool `json:"is_follow,omitempty"`
 }
 
 type UserRegisterResponse struct {
@@ -47,7 +48,6 @@ func ReturnError(c *gin.Context, msg string, errCode int32) {
 	c.JSON(http.StatusBadRequest, UserRegisterResponse{
 		Response: Response{StatusCode: errCode, StatusMsg: msg},
 	})
-	return
 }
 
 // user/register 处理用户注册
@@ -142,27 +142,31 @@ func Login(c *gin.Context) {
 func UserInfo(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 
-	// 从查询参数中获取用户token
-	token := c.Query("token")
+	// 获取用户ID
+	userId := c.Query("user_id")
 
-	// 从内存映射中获取用户信息
-	user, exist := usersLoginInfo[token]
-	if !exist {
-		c.JSON(http.StatusOK, UserResponse{
-			Response: Response{StatusCode: 1, StatusMsg: "用户不存在"},
-		})
+	id, err := strconv.ParseInt(userId, 10, 64)
+	if err != nil {
+		ReturnError(c, "无效用户ID", 1)
 		return
 	}
 
-	// 构建响应消息
-	response := UserResponse{
+	// 查询用户信息
+	var user User
+	result := db.Where(User{Id: id}).First(&user)
+	if result.Error != nil {
+		ReturnError(c, "用户不存在", 2)
+		return
+	}
+
+	// 返回响应
+	c.JSON(http.StatusOK, UserResponse{
 		Response: Response{StatusCode: 0},
 		User: User{
 			Id:              user.Id,
 			Name:            user.Name,
 			FollowCount:     user.FollowCount,
 			FollowerCount:   user.FollowerCount,
-			IsFollow:        user.IsFollow,
 			Avatar:          user.Avatar,
 			BackgroundImage: user.BackgroundImage,
 			Signature:       user.Signature,
@@ -170,8 +174,6 @@ func UserInfo(c *gin.Context) {
 			WorkCount:       user.WorkCount,
 			FavoriteCount:   user.FavoriteCount,
 		},
-	}
-
-	// 返回响应
-	c.JSON(http.StatusOK, response)
+		IsFollow: true,
+	})
 }
