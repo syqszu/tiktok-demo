@@ -1,12 +1,15 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"net/http"
-	"strconv"
+	"gorm.io/gorm/clause"
 )
 
 var usersLoginInfo = map[string]User{
@@ -43,15 +46,7 @@ func Register(c *gin.Context) {
 
 	// 从参数中获取用户名和密码
 	username := c.Query("username")
-	password := c.Query("password") // QUESTION: 是不是应该从请求体中获取用户名和密码？
-
-	// 校验是否已存在该用户名
-	var count int64
-	db.Where(User{Name: username}).Count(&count)
-	if count != 0 {
-		ReturnError(c, "用户已存在", 1)
-		return
-	}
+	password := c.Query("password")
 
 	// 生成用户token
 	tokenBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -62,18 +57,40 @@ func Register(c *gin.Context) {
 	}
 	token := string(tokenBytes)
 
-	// 在数据库中注册新用户
+	// 尝试在数据库中注册新用户
+	
 	newUser := User{
 		Name:  username,
 		Token: token,
 	}
-	result := db.Create(&newUser)
-	if result.Error != nil {
-		ReturnError(c, "注册失败，请重试", 2)
-		fmt.Printf("Insert user error: %v", result.Error)
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		// 校验是否已存在该用户名
+		var users []User
+    	result := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Find(&users, User{Name: username})
+		if result.Error != nil {
+			fmt.Printf("Read user error: %v", result.Error)
+			return result.Error
+		}
+		if len(users) > 0 {
+			fmt.Println("User already exists")
+			return errors.New("User already exists")
+		}
+
+		// 在数据库中注册新用户
+		result = tx.Create(&newUser)
+		if result.Error != nil {
+			fmt.Printf("Insert user error: %v", result.Error)
+			return result.Error
+		}
+		fmt.Printf("Created user with ID = %d", newUser.Id)
+
+		return nil
+	})
+	if err != nil {
+		ReturnError(c, err.Error(), 3)
 		return
 	}
-	fmt.Printf("Created user with ID = %d", newUser.Id)
 
 	// 更新用户信息到内存映射
 	usersLoginInfo[newUser.Name] = newUser
