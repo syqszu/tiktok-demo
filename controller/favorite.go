@@ -31,16 +31,9 @@ func FavoriteAction(c *gin.Context) {
 		return
 	}
 
-	// 检查token是否有效
-	var user User
-	if err := db.First(&user, User{Token: token}).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusBadRequest, Response{StatusCode: 3, StatusMsg: "Invalid token"})
-			fmt.Println("Invalid token")
-			return
-		}
-		c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
-		fmt.Println("Internal error")
+	// 验证token有效性
+	user, err := ValidateToken(c, db, token)
+	if err != nil {
 		return
 	}
 

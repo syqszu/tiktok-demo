@@ -10,7 +10,7 @@ type Video struct {
 	// 使用外键AuthorID关联User表中的Id字段
 	AuthorID      int64  `gorm:"foreignKey:Id" json:"-"`
 	Author        User   `gorm:"foreignKey:AuthorID; constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"author"`
-	PlayUrl       string `gorm:"size:255" json:"play_url" json:"play_url,omitempty"`
+	PlayUrl       string `gorm:"size:255" json:"play_url,omitempty"`
 	CoverUrl      string `gorm:"size:255" json:"cover_url,omitempty"`
 	FavoriteCount int64  `json:"favorite_count,omitempty"`
 	CommentCount  int64  `json:"comment_count,omitempty"`

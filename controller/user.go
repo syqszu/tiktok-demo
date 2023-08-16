@@ -180,3 +180,18 @@ func UserInfo(c *gin.Context) {
 		IsFollow: true,
 	})
 }
+
+func ValidateToken(c *gin.Context, db *gorm.DB, token string) (User, error) {
+	var user User
+	if err := db.First(&user, User{Token: token}).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusBadRequest, Response{StatusCode: 1, StatusMsg: "Invalid token"})
+			fmt.Println("Invalid token")
+			return User{}, err
+		}
+		c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
+		fmt.Println("Internal error")
+		return User{}, err
+	}
+	return user, nil
+}
