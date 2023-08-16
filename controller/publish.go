@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"net/http"
 	"path/filepath"
 )
@@ -42,6 +43,24 @@ func Publish(c *gin.Context) {
 		return
 	}
 
+	//数据入库
+	db := c.MustGet("db").(*gorm.DB)
+
+	video := Video{
+		AuthorID: user.Id,
+		Author:   user,                   // assuming usersLoginInfo[token] returns a User object
+		PlayUrl:  "/public/" + finalName, // assuming the video can be accessed from /public/ endpoint
+		// Fill the other fields as per your requirement
+	}
+
+	if err := db.Create(&video).Error; err != nil {
+		c.JSON(http.StatusOK, Response{
+			StatusCode: 1,
+			StatusMsg:  err.Error(),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, Response{
 		StatusCode: 0,
 		StatusMsg:  finalName + " uploaded successfully",
@@ -50,10 +69,32 @@ func Publish(c *gin.Context) {
 
 // PublishList all users have same publish video list
 func PublishList(c *gin.Context) {
+	token := c.PostForm("token")
+	userID := c.PostForm("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "User ID is required",
+		})
+		return
+	}
+	if _, exist := usersLoginInfo[token]; !exist {
+		c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: "User doesn't exist"})
+		return
+	}
+	db := c.MustGet("db").(*gorm.DB)
+
+	var videos []Video
+	if err := db.Where("author_id = ?", userID).Preload("Author").Find(&videos).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, VideoListResponse{
 		Response: Response{
 			StatusCode: 0,
 		},
-		VideoList: DemoVideos,
+		VideoList: videos,
 	})
 }

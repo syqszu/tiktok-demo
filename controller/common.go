@@ -6,11 +6,12 @@ type Response struct {
 }
 
 type Video struct {
-	Id            int64  `gorm:"primaryKey" json:"id,omitempty"`
+	Id int64 `gorm:"primaryKey" json:"id,omitempty"`
+	// 使用外键AuthorID关联User表中的Id字段
 	AuthorID      int64  `gorm:"foreignKey:Id" json:"-"`
-	Author        User   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"author"`
-	PlayUrl       string `json:"play_url,omitempty"`
-	CoverUrl      string `json:"cover_url,omitempty"`
+	Author        User   `gorm:"foreignKey:AuthorID; constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"author"`
+	PlayUrl       string `gorm:"size:255" json:"play_url" json:"play_url,omitempty"`
+	CoverUrl      string `gorm:"size:255" json:"cover_url,omitempty"`
 	FavoriteCount int64  `json:"favorite_count,omitempty"`
 	CommentCount  int64  `json:"comment_count,omitempty"`
 	IsFavorite    bool   `json:"is_favorite,omitempty"`
@@ -18,23 +19,25 @@ type Video struct {
 
 type Comment struct {
 	Id         int64  `json:"id,omitempty"`
+	UserID     int64  `gorm:"foreignkey:UserRefer"` // 该字段将作为外键与User表中的Id字段关联
 	User       User   `json:"user"`
+	VideoID    int64  `json:"video_id,omitempty"` // 添加的字段
 	Content    string `json:"content,omitempty"`
 	CreateDate string `json:"create_date,omitempty"`
 }
 
 type User struct {
-	Id              int64  `gorm:"primaryKey" json:"id,omitempty"`
-	Name            string `json:"name,omitempty"`
-	FollowCount     int64  `json:"follow_count,omitempty"`
-	FollowerCount   int64  `json:"follower_count,omitempty"`
-	Avatar          string `json:"avatar,omitempty"`
-	BackgroundImage string `json:"background_image,omitempty"`
-	Signature       string `json:"signature,omitempty"`
-	TotalFavorited  int64  `json:"total_favorited,omitempty"`
-	WorkCount       int64  `json:"work_count,omitempty"`
-	FavoriteCount   int64  `json:"favorite_count,omitempty"`
-	Token       	string `json:"token,omitempty"`
+	Id              int64   `gorm:"primary_key" json:"id,omitempty"`
+	Name            string  `json:"name,omitempty"`
+	FollowCount     int64   `json:"follow_count,omitempty"`
+	FollowerCount   int64   `json:"follower_count,omitempty"`
+	Avatar          string  `json:"avatar,omitempty"`
+	BackgroundImage string  `json:"background_image,omitempty"`
+	Signature       string  `json:"signature,omitempty"`
+	TotalFavorited  int64   `json:"total_favorited,omitempty"`
+	WorkCount       int64   `json:"work_count,omitempty"`
+	FavoriteCount   int64   `json:"favorite_count,omitempty"`
+	Token           string  `json:"token,omitempty"`
 	FavoritedVideos []Video `gorm:"many2many:video_favorites;" json:"-"`
 }
 
