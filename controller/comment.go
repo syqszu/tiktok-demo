@@ -19,7 +19,7 @@ type CommentActionResponse struct {
 	Comment Comment `json:"comment,omitempty"`
 }
 
-// CommentAction no practical effect, just check if token is valid
+// Handles /douyin/comment/action
 func CommentAction(c *gin.Context) {
 	token := c.Query("token")
 	actionType := c.Query("action_type")
@@ -67,7 +67,7 @@ func CommentAction(c *gin.Context) {
 
 }
 
-// CommentList all videos have same demo comment list
+// Handles /douyin/comment/list
 func CommentList(c *gin.Context) {
 	token := c.Query("token")
 	videoID := c.Query("video_id")
@@ -79,8 +79,9 @@ func CommentList(c *gin.Context) {
 		return
 	}
 
+	// 从数据库读取评论，并按发布时间倒序排列
 	var comments []Comment
-	if err := db.Where("video_id = ?", videoID).Preload("User").Find(&comments).Error; err != nil {
+	if err := db.Where("video_id = ?", videoID).Preload("User").Order("create_date DESC").Find(&comments).Error; err != nil {
 		c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
 		return
 	}
