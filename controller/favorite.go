@@ -10,6 +10,11 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	FAVOURITE_ACTION_TYPE_FAVOURITE   = 1 // 点赞
+	FAVOURITE_ACTION_TYPE_UNFAVOURITE = 2 // 取消点赞
+)
+
 // Handles /douyin/favourite/action
 func FavoriteAction(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
@@ -20,16 +25,21 @@ func FavoriteAction(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, Response{StatusCode: 1, StatusMsg: "Invalid video_id"})
 		return
 	}
+	action, err := strconv.ParseInt(c.Query("action_type"), 10, 32)
+	if err != nil || (action != FAVOURITE_ACTION_TYPE_FAVOURITE && action != FAVOURITE_ACTION_TYPE_UNFAVOURITE) {
+		c.JSON(http.StatusBadRequest, Response{StatusCode: 2, StatusMsg: "Invalid action_type"})
+		return
+	}
 
 	// 检查token是否有效
 	var user User
 	if err := db.First(&user, User{Token: token}).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusBadRequest, Response{StatusCode: 1, StatusMsg: "Invalid token"})
+			c.JSON(http.StatusBadRequest, Response{StatusCode: 3, StatusMsg: "Invalid token"})
 			fmt.Println("Invalid token")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, Response{StatusCode: 1, StatusMsg: "Internal error"})
+		c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
 		fmt.Println("Internal error")
 		return
 	}
@@ -47,14 +57,19 @@ func FavoriteAction(c *gin.Context) {
 		return
 	}
 
-	// TODO: 取消点赞
-
-	// 记录点赞
-	
-	// Video ID为主键，不会记录重复点赞
-	if err := db.Model(&user).Association("FavoritedVideos").Append(&video); err != nil {
-		c.JSON(http.StatusInternalServerError, Response{StatusCode: 1, StatusMsg: "Internal error"})
-		fmt.Printf("failed to add video to favorites: %v", err)
+	if action == FAVOURITE_ACTION_TYPE_UNFAVOURITE { // 取消点赞
+		// 重复取消点赞时，表中没有对应的video_id，操作会被忽略
+		if err := db.Model(&user).Association("FavoritedVideos").Delete(&video); err != nil {
+			c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
+			fmt.Printf("failed to delete video from favorites: %v", err)
+			return
+		}
+	} else { // 记录点赞
+		// video_id为主键，不会记录重复点赞
+		if err := db.Model(&user).Association("FavoritedVideos").Append(&video); err != nil {
+			c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
+			fmt.Printf("failed to add video to favorites: %v", err)
+		}
 	}
 
 	c.JSON(http.StatusOK, Response{StatusCode: 0})
@@ -71,7 +86,7 @@ func FavoriteList(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, Response{StatusCode: 1, StatusMsg: "Invalid user_id"})
 		return
 	}
-	
+
 	// 检查user_id是否有效
 	var user User
 	if err := db.Preload("FavoritedVideos").Where(User{Id: userId}).First(&user).Error; err != nil {
