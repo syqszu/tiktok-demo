@@ -6,9 +6,10 @@ type Response struct {
 }
 
 type Video struct {
-	Id            int64  `json:"id,omitempty"`
-	Author        User   `json:"author"`
-	PlayUrl       string `json:"play_url" json:"play_url,omitempty"`
+	Id            int64  `gorm:"primaryKey" json:"id,omitempty"`
+	AuthorID      int64  `gorm:"foreignKey:Id" json:"-"`
+	Author        User   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"author"`
+	PlayUrl       string `json:"play_url,omitempty"`
 	CoverUrl      string `json:"cover_url,omitempty"`
 	FavoriteCount int64  `json:"favorite_count,omitempty"`
 	CommentCount  int64  `json:"comment_count,omitempty"`
@@ -23,7 +24,7 @@ type Comment struct {
 }
 
 type User struct {
-	Id              int64  `json:"id,omitempty"`
+	Id              int64  `gorm:"primaryKey" json:"id,omitempty"`
 	Name            string `json:"name,omitempty"`
 	FollowCount     int64  `json:"follow_count,omitempty"`
 	FollowerCount   int64  `json:"follower_count,omitempty"`
@@ -34,6 +35,7 @@ type User struct {
 	WorkCount       int64  `json:"work_count,omitempty"`
 	FavoriteCount   int64  `json:"favorite_count,omitempty"`
 	Token       	string `json:"token,omitempty"`
+	FavoritedVideos []Video `gorm:"many2many:video_favorites;" json:"-"`
 }
 
 type Message struct {
