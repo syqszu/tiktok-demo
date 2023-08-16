@@ -64,21 +64,33 @@ func FavoriteAction(c *gin.Context) {
 func FavoriteList(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 
-	// TODO: 根据user_id判断是否有权限查看
-	var user User
+	// 获取token和user_id参数
 	token := c.Query("token")
-
-	// 检查token是否有效
-	if err := db.Preload("FavoritedVideos").Where(User{Token: token}).First(&user).Error; err != nil {
-		// 无效token
+	userId, err := strconv.ParseInt(c.Query("user_id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, Response{StatusCode: 1, StatusMsg: "Invalid user_id"})
+		return
+	}
+	
+	// 检查user_id是否有效
+	var user User
+	if err := db.Preload("FavoritedVideos").Where(User{Id: userId}).First(&user).Error; err != nil {
+		// 无效user_id
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusBadRequest, Response{StatusCode: 1, StatusMsg: "Invalid token"})
-			fmt.Println("Invalid token")
+			c.JSON(http.StatusBadRequest, Response{StatusCode: 2, StatusMsg: "user_id does not exist"})
+			fmt.Println("user_id does not exist")
 			return
 		}
 		// 其他错误
-		c.JSON(http.StatusInternalServerError, Response{StatusCode: 1, StatusMsg: "Internal error"})
+		c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
 		fmt.Println("Internal error")
+		return
+	}
+
+	// 检查token是否有效
+	if user.Token != token {
+		c.JSON(http.StatusBadRequest, Response{StatusCode: 1, StatusMsg: "Invalid token"})
+		fmt.Println("Invalid token")
 		return
 	}
 
