@@ -31,6 +31,10 @@ func main() {
 	sqlDB.SetConnMaxLifetime(10 * time.Second) // 设置连接可以重复使用的最长时间：10s
 
 	// 自动迁移数据结构
+	err = db.AutoMigrate(&controller.Video{})
+	if err != nil {
+		panic("Failed to migrate table: videos\n" + err.Error())
+	}
 	err = db.AutoMigrate(&controller.User{})
 	if err != nil {
 		panic("Failed to migrate table: users\n" + err.Error())
