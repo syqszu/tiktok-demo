@@ -15,10 +15,13 @@ type VideoListResponse struct {
 
 // Publish check token then save upload file to public directory
 func Publish(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+
 	token := c.PostForm("token")
 
-	if _, exist := usersLoginInfo[token]; !exist {
-		c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: "User doesn't exist"})
+	// 验证token有效性
+	user, err := ValidateToken(c, db, token)
+	if err != nil {
 		return
 	}
 
@@ -32,7 +35,6 @@ func Publish(c *gin.Context) {
 	}
 
 	filename := filepath.Base(data.Filename)
-	user := usersLoginInfo[token]
 	finalName := fmt.Sprintf("%d_%s", user.Id, filename)
 	saveFile := filepath.Join("./public/", finalName)
 	if err := c.SaveUploadedFile(data, saveFile); err != nil {
@@ -44,8 +46,6 @@ func Publish(c *gin.Context) {
 	}
 
 	//数据入库
-	db := c.MustGet("db").(*gorm.DB)
-
 	video := Video{
 		AuthorID: user.Id,
 		Author:   user,                   // assuming usersLoginInfo[token] returns a User object

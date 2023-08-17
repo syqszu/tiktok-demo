@@ -21,9 +21,10 @@ type CommentActionResponse struct {
 
 // Handles /douyin/comment/action
 func CommentAction(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	
 	token := c.Query("token")
 	actionType := c.Query("action_type")
-	db := c.MustGet("db").(*gorm.DB)
 	videoID, _ := strconv.ParseInt(c.Query("video_id"), 10, 64)
 
 	// 验证token有效性
