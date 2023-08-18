@@ -9,11 +9,12 @@ import (
 	"github.com/syqszu/tiktok-demo/service"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+
 )
 
 func main() {
 	// 建立数据库连接
-	dsn := "root:123456@tcp(127.0.0.1:3306)/douyindemo?charset=utf8mb4&parseTime=True&loc=Local" // TODO: 从配置文件中读取
+	dsn := "root:@tcp(127.0.0.1:3306)/douyindemo?charset=utf8mb4&parseTime=True&loc=Local" // TODO: 从配置文件中读取
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic("Failed to connect to the database: " + err.Error())
@@ -55,6 +56,9 @@ func main() {
 	 */
 
 	r := gin.Default()
+
+	r.Static("/public", "./public") // 指定静态文件目录,视频流，放在initRoute会读取不到
+
 	r.Use(func(c *gin.Context) {
 		c.Set("db", db)
 		c.Next()
@@ -62,5 +66,7 @@ func main() {
 
 	initRouter(r) // 初始化路由
 
-	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+
+	r.Run(":23333")                            // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+
 }

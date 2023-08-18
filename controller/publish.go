@@ -2,10 +2,11 @@ package controller
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"net/http"
 	"path/filepath"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type VideoListResponse struct {
@@ -46,13 +47,25 @@ func Publish(c *gin.Context) {
 	}
 
 	//数据入库
-	video := Video{
-		AuthorID: user.Id,
-		Author:   user,                   // assuming usersLoginInfo[token] returns a User object
-		PlayUrl:  "/public/" + finalName, // assuming the video can be accessed from /public/ endpoint
-		// Fill the other fields as per your requirement
+
+    var maxID int64
+    // 查询最大的 ID
+    result := db.Table("videos").Select("MAX(id)").Scan(&maxID)
+	if result.Error != nil {
+		panic(result.Error)
 	}
 
+	ServerIP := "http://45.40.228.46:23333" //视频服务器地址
+	
+	video := Video{
+		Id: maxID+1,
+		AuthorID: user.Id,
+		Author:   user,                              // assuming usersLoginInfo[token] returns a User object
+		PlayUrl:  ServerIP + "/public/" + finalName, // assuming the video can be accessed from /public/ endpoint
+		// Fill the other fields as per your requirement
+		CoverUrl: "https://cdn.pixabay.com/photo/2016/03/27/18/10/bear-1283347_1280.jpg", //之后使用Ffpemg对视频切片获取封面
+	}
+    
 	if err := db.Create(&video).Error; err != nil {
 		c.JSON(http.StatusOK, Response{
 			StatusCode: 1,
@@ -60,6 +73,8 @@ func Publish(c *gin.Context) {
 		})
 		return
 	}
+	VideoList = append(VideoList, video)
+	//在结构体中追加元素
 
 	c.JSON(http.StatusOK, Response{
 		StatusCode: 0,

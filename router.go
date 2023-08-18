@@ -1,13 +1,16 @@
 package main
 
 import (
-	"github.com/syqszu/tiktok-demo/controller"
+	
+
 	"github.com/gin-gonic/gin"
+	"github.com/syqszu/tiktok-demo/controller"
 )
+
+
 
 func initRouter(r *gin.Engine) {
 	// public directory is used to serve static resources
-	r.Static("/static", "./public")
 
 	apiRouter := r.Group("/douyin")
 
@@ -32,4 +35,5 @@ func initRouter(r *gin.Engine) {
 	apiRouter.GET("/relation/friend/list/", controller.FriendList)
 	apiRouter.GET("/message/chat/", controller.MessageChat)
 	apiRouter.POST("/message/action/", controller.MessageAction)
+
 }
