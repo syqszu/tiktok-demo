@@ -1,7 +1,7 @@
 package controller
 
 var (
-	VIDEO_SERVER_URL string = "http://192.168.3.85:8080/"
+	VIDEO_SERVER_URL string = "http://192.168.3.85:8080/" // 填写本机IP地址与服务器端口
 	DB_SERVER        string = "127.0.0.1:3306"
 	DB_USER          string = "root"
 	DB_PASSWORD      string = "123456"
@@ -13,15 +13,15 @@ type Response struct {
 }
 
 type Video struct {
-	Id int64 `gorm:"primaryKey" json:"id,omitempty"`
-	// 使用外键AuthorID关联User表中的Id字段
-	AuthorID      int64  `gorm:"foreignKey:Id" json:"-"`
+	Id            int64  `gorm:"primaryKey" json:"id,omitempty"`
+	AuthorID      int64  `gorm:"foreignKey:Id" json:"-"` // 使用外键AuthorID关联User表中的Id字段
 	Author        User   `gorm:"foreignKey:AuthorID; constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"author"`
 	PlayUrl       string `gorm:"size:255" json:"play_url,omitempty"`
 	CoverUrl      string `gorm:"size:255" json:"cover_url,omitempty"`
 	FavoriteCount int64  `json:"favorite_count,omitempty"`
 	CommentCount  int64  `json:"comment_count,omitempty"`
-	IsFavorite    bool   `json:"is_favorite,omitempty"`
+	IsFavorite    bool   `gorm:"-" json:"is_favorite,omitempty"` // 在返回时根据用户是否收藏该视频进行赋值，不保存在数据库中
+	UploadTime    int64  `json:"-"`
 }
 
 type Comment struct {

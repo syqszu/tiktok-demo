@@ -2,10 +2,12 @@ package controller
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"net/http"
 	"path/filepath"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type VideoListResponse struct {
@@ -52,6 +54,7 @@ func Publish(c *gin.Context) {
 		PlayUrl:  VIDEO_SERVER_URL + "static/" + finalName, // 视频作为静态资源通过 /static/ 访问
 		// Fill the other fields as per your requirement
 		CoverUrl: "https://cdn.pixabay.com/photo/2016/03/27/18/10/bear-1283347_1280.jpg", // TODO: 使用Ffpemg对视频切片获取封面
+		UploadTime: time.Now().Unix(),
 	}
 
 	if err := db.Create(&video).Error; err != nil {
