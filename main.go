@@ -13,7 +13,7 @@ import (
 
 func main() {
 	// 建立数据库连接
-	dsn := "root:123456@tcp(127.0.0.1:3306)/douyindemo?charset=utf8mb4&parseTime=True&loc=Local" // TODO: 从配置文件中读取
+	dsn := controller.DB_USER + ":" + controller.DB_PASSWORD + "@tcp(" + controller.DB_SERVER + ")/douyindemo?charset=utf8mb4&parseTime=True&loc=Local" // TODO: 从配置文件中读取
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic("Failed to connect to the database: " + err.Error())
@@ -55,6 +55,8 @@ func main() {
 	 */
 
 	r := gin.Default()
+
+	// get ip address of this server
 
 	r.Use(func(c *gin.Context) {
 		c.Set("db", db)
