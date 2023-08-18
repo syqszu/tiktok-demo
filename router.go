@@ -1,17 +1,15 @@
 package main
 
 import (
-	
-
 	"github.com/gin-gonic/gin"
 	"github.com/syqszu/tiktok-demo/controller"
 )
 
-
-
 func initRouter(r *gin.Engine) {
 	// public directory is used to serve static resources
+	r.Static("/public", "./public")
 
+	// apis
 	apiRouter := r.Group("/douyin")
 
 	// basic apis

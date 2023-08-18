@@ -93,7 +93,7 @@ func Register(c *gin.Context) {
 	}
 
 	// 更新用户信息到内存映射
-	usersLoginInfo[newUser.Name] = newUser
+	usersLoginInfo[newUser.Token] = newUser
 
 	// 返回注册成功响应
 	c.JSON(http.StatusOK, UserLoginResponse{
