@@ -7,7 +7,7 @@ import (
 
 func initRouter(r *gin.Engine) {
 	// public directory is used to serve static resources
-	r.Static("/public", "./public")
+	r.Static("/static", "./public")
 
 	// apis
 	apiRouter := r.Group("/douyin")

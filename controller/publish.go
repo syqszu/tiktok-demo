@@ -49,7 +49,7 @@ func Publish(c *gin.Context) {
 	video := Video{
 		AuthorID: user.Id,
 		Author:   user,
-		PlayUrl:  VIDEO_SERVER_URL + "public/" + finalName, // 视频作为静态资源通过 /public/ 访问
+		PlayUrl:  VIDEO_SERVER_URL + "static/" + finalName, // 视频作为静态资源通过 /static/ 访问
 		// Fill the other fields as per your requirement
 		CoverUrl: "https://cdn.pixabay.com/photo/2016/03/27/18/10/bear-1283347_1280.jpg", // TODO: 使用Ffpemg对视频切片获取封面
 	}
