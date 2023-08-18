@@ -2,10 +2,10 @@ package controller
 
 import (
 	"fmt"
-	"net/http"
-	"path/filepath"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"net/http"
+	"path/filepath"
 )
 
 type VideoListResponse struct {
@@ -45,7 +45,7 @@ func Publish(c *gin.Context) {
 		return
 	}
 
-	//数据入库
+	// 数据入库
 	video := Video{
 		AuthorID: user.Id,
 		Author:   user,
@@ -61,9 +61,8 @@ func Publish(c *gin.Context) {
 		})
 		return
 	}
-	VideoList = append(VideoList, video)
-	//在结构体中追加元素
 
+	// 返回成功信息
 	c.JSON(http.StatusOK, Response{
 		StatusCode: 0,
 		StatusMsg:  finalName + " uploaded successfully",
