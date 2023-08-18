@@ -2,10 +2,10 @@ package controller
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"net/http"
 	"path/filepath"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type VideoListResponse struct {
@@ -48,9 +48,10 @@ func Publish(c *gin.Context) {
 	//数据入库
 	video := Video{
 		AuthorID: user.Id,
-		Author:   user,                   // assuming usersLoginInfo[token] returns a User object
-		PlayUrl:  "/public/" + finalName, // assuming the video can be accessed from /public/ endpoint
+		Author:   user,
+		PlayUrl:  VIDEO_SERVER_URL + "static/" + finalName, // 视频作为静态资源通过 /static/ 访问
 		// Fill the other fields as per your requirement
+		CoverUrl: "https://cdn.pixabay.com/photo/2016/03/27/18/10/bear-1283347_1280.jpg", // TODO: 使用Ffpemg对视频切片获取封面
 	}
 
 	if err := db.Create(&video).Error; err != nil {
@@ -60,6 +61,8 @@ func Publish(c *gin.Context) {
 		})
 		return
 	}
+	VideoList = append(VideoList, video)
+	//在结构体中追加元素
 
 	c.JSON(http.StatusOK, Response{
 		StatusCode: 0,
@@ -69,19 +72,22 @@ func Publish(c *gin.Context) {
 
 // PublishList all users have same publish video list
 func PublishList(c *gin.Context) {
-	token := c.PostForm("token")
-	userID := c.PostForm("user_id")
+	db := c.MustGet("db").(*gorm.DB)
+
+	token := c.Query("token")
+	userID := c.Query("user_id")
 	if userID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "User ID is required",
 		})
 		return
 	}
-	if _, exist := usersLoginInfo[token]; !exist {
-		c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: "User doesn't exist"})
+
+	// 验证token有效性
+	_, err := ValidateToken(c, db, token)
+	if err != nil {
 		return
 	}
-	db := c.MustGet("db").(*gorm.DB)
 
 	var videos []Video
 	if err := db.Where("author_id = ?", userID).Preload("Author").Find(&videos).Error; err != nil {
