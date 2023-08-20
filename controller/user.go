@@ -1,12 +1,15 @@
 package controller
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -94,6 +97,24 @@ func Register(c *gin.Context) {
 
 	// 更新用户信息到内存映射
 	usersLoginInfo[newUser.Token] = newUser
+   
+	//更新到缓存
+    rdb := c.MustGet("rdb").(*redis.Client)
+	idStr := strconv.FormatInt(newUser.Id, 10)
+	//token
+	err = rdb.HSetNX(context.Background(),"token", idStr, newUser.Token).Err()//分布式锁
+    if err != nil {
+	panic(err)
+    }
+	//将user存入缓存
+	NewUser,err := json.Marshal(newUser)
+	if err != nil {
+		panic(err)
+		}
+	err = rdb.HSetNX(context.Background(),"user", newUser.Token,string(NewUser)).Err()//分布式锁
+    if err != nil {
+	panic(err)
+    }
 
 	// 返回注册成功响应
 	c.JSON(http.StatusOK, UserLoginResponse{
@@ -133,6 +154,23 @@ func Login(c *gin.Context) {
 		return
 	}
 
+    //登录成功后，将token缓存到redis
+	rdb := c.MustGet("rdb").(*redis.Client)
+	idStr := strconv.FormatInt(user.Id, 10)
+	err = rdb.HSetNX(context.Background(),"token",idStr, user.Token).Err()//分布式锁
+    if err != nil {
+	panic(err)
+    }
+    //将user存入缓存
+	NewUser,err := json.Marshal(user)
+	if err != nil {
+		panic(err)
+		}
+	err = rdb.HSetNX(context.Background(),"user", user.Token,string(NewUser)).Err()//分布式锁
+    if err != nil {
+	panic(err)
+    }
+
 	// 返回登录成功响应
 	c.JSON(http.StatusOK, UserLoginResponse{
 		Response: Response{StatusCode: 0},
@@ -147,7 +185,8 @@ func UserInfo(c *gin.Context) {
 
 	// 获取用户ID
 	userId := c.Query("user_id")
-
+    fmt.Println("用户id是",userId)
+	
 	id, err := strconv.ParseInt(userId, 10, 64)
 	if err != nil {
 		ReturnError(c, "无效用户ID", 1)
