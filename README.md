@@ -1,10 +1,16 @@
-# douyin-demo
+# 第六届字节跳动青训营 - 后端大项目 douyin-demo
 
+## 依赖项
 
+- FFmpeg
 
+Windows:
 
+```shell
+winget install FFmpeg
+```
 
-### FFmpeg
+## FFmpeg
 
 视频使用了FFmpeg截取了第一秒第一帧作为封面
 
@@ -12,11 +18,11 @@ publish.go
 
 ```go
 // FFmpeg命令截图
-	cmd := exec.Command("FFmpeg/ffmpeg.exe", "-i", "public/"+finalName, "-ss" , "1" , "-vframes", "1", "img/"+finalName+".jpg")
-	err = cmd.Run() //运行
-	if err != nil {
-		fmt.Println(err)
-	}
+cmd := exec.Command("FFmpeg/ffmpeg.exe", "-i", "public/"+finalName, "-ss" , "1" , "-vframes", "1", "img/"+finalName+".jpg")
+err = cmd.Run() //运行
+if err != nil {
+	fmt.Println(err)
+}
 ```
 
 异步操作对视频进行压缩转码，使得视频适合播放：
@@ -36,4 +42,3 @@ func transcodeVideo(finalName string) {
         return
     }
 ```
-

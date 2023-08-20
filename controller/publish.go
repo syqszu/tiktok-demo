@@ -20,7 +20,7 @@ type VideoListResponse struct {
 // FFmpeg转码操作...
 func transcodeVideo(finalName string) {
 	//视频转码压缩
-	cmd := exec.Command("FFmpeg/ffmpeg.exe", "-i", "public/"+finalName, "-c:v", "libx264", "-crf", "23", "-preset", "medium", "-c:a", "aac", "-b:a", "128k", "public/"+"new"+finalName)
+	cmd := exec.Command("ffmpeg", "-i", "public/"+finalName, "-c:v", "libx264", "-crf", "23", "-preset", "medium", "-c:a", "aac", "-b:a", "128k", "public/"+"new"+finalName)
 	err := cmd.Run() //运行
 	if err != nil {
 		fmt.Println(err)
@@ -66,7 +66,7 @@ func Publish(c *gin.Context) {
 		return
 	}
 	// FFmpeg命令截图
-	cmd := exec.Command("FFmpeg/ffmpeg.exe", "-i", "public/"+finalName, "-ss", "1", "-vframes", "1", "img/"+finalName+".jpg")
+	cmd := exec.Command("ffmpeg", "-i", "public/"+finalName, "-ss", "1", "-vframes", "1", "img/"+finalName+".jpg")
 	err = cmd.Run() //运行
 	if err != nil {
 		fmt.Println(err)
@@ -79,8 +79,7 @@ func Publish(c *gin.Context) {
 		AuthorID: user.Id,
 		Author:   user,
 		PlayUrl:  VIDEO_SERVER_URL + "static/" + finalName, // 视频作为静态资源通过 /static/ 访问
-		// Fill the other fields as per your requirement
-		CoverUrl:   VIDEO_SERVER_URL + "img/" + finalName + ".jpg", // TODO: 使用Ffpemg对视频切片获取封面
+		CoverUrl:   VIDEO_SERVER_URL + "img/" + finalName + ".jpg", // 使用Ffpemg对视频切片获取封面
 		UploadTime: time.Now().Unix(),
 	}
 

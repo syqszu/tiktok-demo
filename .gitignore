@@ -24,6 +24,7 @@ go.work
 
 # Video storage
 public
+img
 
 # 1024 code
 .1024.nix
