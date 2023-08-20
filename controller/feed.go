@@ -26,7 +26,7 @@ func Feed(c *gin.Context) {
 
 	var videos []Video
 	result := db.
-		Where("upload_time < ?", latest_time). // 投稿时间过滤
+		Where("upload_time < ?", latest_time).Preload("Author").// 投稿时间过滤
 		Order("upload_time desc").             // 按照投稿时间倒序
 		Limit(30).                             // 限制返回30条
 		Find(&videos)
@@ -36,7 +36,7 @@ func Feed(c *gin.Context) {
 			StatusMsg:  "Unable to get videos" + err.Error(),
 		})
 	}
-
+    
 	// Use demo video if there is no video in database
 	if len(videos) == 0 {
 		videos = append(videos, DemoVideo)

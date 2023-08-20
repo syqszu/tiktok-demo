@@ -9,9 +9,18 @@ import (
 	"github.com/syqszu/tiktok-demo/service"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"github.com/go-redis/redis/v8"
 )
 
+
 func main() {
+	//建立redis连接
+    rdb := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+
 	// 建立数据库连接
 	dsn := controller.DB_USER + ":" + controller.DB_PASSWORD + "@tcp(" + controller.DB_SERVER + ")/douyindemo?charset=utf8mb4&parseTime=True&loc=Local" // TODO: 从配置文件中读取
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
@@ -19,7 +28,7 @@ func main() {
 		panic("Failed to connect to the database: " + err.Error())
 	}
 	fmt.Println("Connected to the database")
-
+    
 	// 配置连接池
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -57,9 +66,11 @@ func main() {
 	r := gin.Default()
 
 	// get ip address of this server
+    
 
 	r.Use(func(c *gin.Context) {
 		c.Set("db", db)
+		c.Set("rdb", rdb)
 		c.Next()
 	}) // 注册数据库连接中间件
 

@@ -1,7 +1,7 @@
 package controller
 
 var DemoUser = User{
-	Id:            1,
+	Id:            0,
 	Name:          "TestUser",
 	FollowCount:   0,
 	FollowerCount: 0,

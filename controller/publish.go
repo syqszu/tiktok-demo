@@ -37,7 +37,7 @@ func transcodeVideo(finalName string) {
 // Publish check token then save upload file to public directory
 func Publish(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
-
+	title := c.PostForm("title") //视频标题
 	token := c.PostForm("token")
 
 	// 验证token有效性
@@ -78,6 +78,7 @@ func Publish(c *gin.Context) {
 	video := Video{
 		AuthorID: user.Id,
 		Author:   user,
+		Title:    title,
 		PlayUrl:  VIDEO_SERVER_URL + "static/" + finalName, // 视频作为静态资源通过 /static/ 访问
 		CoverUrl:   VIDEO_SERVER_URL + "img/" + finalName + ".jpg", // 使用Ffpemg对视频切片获取封面
 		UploadTime: time.Now().Unix(),

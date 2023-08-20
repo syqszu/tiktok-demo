@@ -42,3 +42,25 @@ func transcodeVideo(finalName string) {
         return
     }
 ```
+
+
+
+### 使用Redis实现了关注操作，关注列表，粉丝列表
+
+### 思路
+
+思路是将要传递的user结构体转换成字符串数据存储在redis里，需要使用的时候再取出来。
+
+token验证和查询用户都可以使用Redis优化数据
+
+使用Redis的存储思路如图：
+
+![image-20230820113047495](doc/REARDONE.png)
+
+**用用户ID可以访问用户的token进行验证，用户的token可以取出用户本体**
+
+**关注列表用用户的ID作为key，被关注的用户ID作为field，value为关注用户的json数据**
+
+**关注列表用用户的token作为key，粉丝用户ID作为field，value为粉丝用户的json数据**
+
+user.go 在登录和注册的时候将用户数据注册进redis的哈希结构中，用 HSetNX（分布式锁）的方式存储，防止重复操作
