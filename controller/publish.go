@@ -3,6 +3,8 @@ package controller
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -13,6 +15,23 @@ import (
 type VideoListResponse struct {
 	Response
 	VideoList []Video `json:"video_list"`
+}
+
+// FFmpeg转码操作...
+func transcodeVideo(finalName string) {
+	//视频转码压缩
+	cmd := exec.Command("FFmpeg/ffmpeg.exe", "-i", "public/"+finalName, "-c:v", "libx264", "-crf", "23", "-preset", "medium", "-c:a", "aac", "-b:a", "128k", "public/"+"new"+finalName)
+	err := cmd.Run() //运行
+	if err != nil {
+		fmt.Println(err)
+	}
+	os.Remove("public/" + finalName)                                //移除原文件
+	err = os.Rename("public/"+"new"+finalName, "public/"+finalName) //重命名转码文件
+	if err != nil {
+		fmt.Println("Error renaming file:", err)
+		return
+	}
+
 }
 
 // Publish check token then save upload file to public directory
@@ -46,6 +65,14 @@ func Publish(c *gin.Context) {
 		})
 		return
 	}
+	// FFmpeg命令截图
+	cmd := exec.Command("FFmpeg/ffmpeg.exe", "-i", "public/"+finalName, "-ss", "1", "-vframes", "1", "img/"+finalName+".jpg")
+	err = cmd.Run() //运行
+	if err != nil {
+		fmt.Println(err)
+	}
+	//视频转码压缩
+	go transcodeVideo(finalName) //异步操作防止程序返回错误
 
 	// 数据入库
 	video := Video{
@@ -53,7 +80,7 @@ func Publish(c *gin.Context) {
 		Author:   user,
 		PlayUrl:  VIDEO_SERVER_URL + "static/" + finalName, // 视频作为静态资源通过 /static/ 访问
 		// Fill the other fields as per your requirement
-		CoverUrl: "https://cdn.pixabay.com/photo/2016/03/27/18/10/bear-1283347_1280.jpg", // TODO: 使用Ffpemg对视频切片获取封面
+		CoverUrl:   VIDEO_SERVER_URL + "img/" + finalName + ".jpg", // TODO: 使用Ffpemg对视频切片获取封面
 		UploadTime: time.Now().Unix(),
 	}
 
