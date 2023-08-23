@@ -97,6 +97,10 @@ t.Fatalf("Failed to create gorm database: %s", err)
 
 这个`*gorm.DB`对象可以被传递给被测试的函数用于测试。
 
+其它相关框架：
+
+- [go-mocket](https://github.com/Selvatico/go-mocket) （已停止维护）
+
 ### HTTP请求与响应
 
 根据 [Gin 官方文档](https://gin-gonic.com/docs/testing/)，我们可以通过标准库`net/http/httptest`对HTTP请求和响应进行单元测试。
@@ -133,3 +137,12 @@ func TestPingRoute(t *testing.T) {
 	assert.Equal(t, "pong", w.Body.String())
 }
 ```
+
+其它相关框架：
+
+- [gofight](https://github.com/appleboy/gofight) （已停止维护）
+
+该方案存在的问题：
+
+- Gin Handler中的错误不能在单元测试中获取，只能通过调试查看错误。
+- go-sqlmock 直接匹配SQL语句太严格，任何对数据库操作的变更都需要更新单元测试。更好的方式是在数据库操作结束后检查期望发生的更改，但没有找到合适的框架。考虑其它方案：使用针对GORM的Mock框架

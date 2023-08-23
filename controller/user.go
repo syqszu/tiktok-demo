@@ -93,26 +93,28 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	// 更新用户信息到内存映射
-	usersLoginInfo[newUser.Token] = newUser
+	// TODO: 使用 Redis 加速
+	
+	// // 更新用户信息到内存映射
+	// usersLoginInfo[newUser.Token] = newUser
 
-	//更新到缓存
-	rdb := c.MustGet("rdb").(*redis.Client)
-	idStr := strconv.FormatInt(newUser.Id, 10)
-	//token
-	err = rdb.HSetNX(context.Background(), "token", idStr, newUser.Token).Err() //分布式锁
-	if err != nil {
-		panic(err)
-	}
-	//将user存入缓存
-	NewUser, err := json.Marshal(newUser)
-	if err != nil {
-		panic(err)
-	}
-	err = rdb.HSetNX(context.Background(), "user", newUser.Token, string(NewUser)).Err() //分布式锁
-	if err != nil {
-		panic(err)
-	}
+	// //更新到缓存
+	// rdb := c.MustGet("rdb").(*redis.Client)
+	// idStr := strconv.FormatInt(newUser.Id, 10)
+	// //token
+	// err = rdb.HSetNX(context.Background(), "token", idStr, newUser.Token).Err() //分布式锁
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// //将user存入缓存
+	// NewUser, err := json.Marshal(newUser)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// err = rdb.HSetNX(context.Background(), "user", newUser.Token, string(NewUser)).Err() //分布式锁
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// 返回注册成功响应
 	c.JSON(http.StatusOK, UserLoginResponse{
