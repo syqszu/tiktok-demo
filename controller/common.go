@@ -1,11 +1,5 @@
 package controller
 
-var (
-	VIDEO_SERVER_URL string = "http://192.168.3.85:8080/" // 填写本机IP地址与服务器端口
-	DB_SERVER        string = "127.0.0.1:3306"
-	DB_USER          string = "root"
-	DB_PASSWORD      string = "123456"
-)
 
 type Response struct {
 	StatusCode int32  `json:"status_code"`
@@ -22,7 +16,7 @@ type Video struct {
 	CommentCount  int64  `json:"comment_count,omitempty"`
 	IsFavorite    bool   `gorm:"-" json:"is_favorite,omitempty"` // 在返回时根据用户是否收藏该视频进行赋值，不保存在数据库中
 	UploadTime    int64  `json:"-"`
-	Title         string `json:"title"` // 视频标题
+	Title         string `json:"title"`         // 视频标题
 }
 
 type Comment struct {
@@ -49,11 +43,30 @@ type User struct {
 	FavoritedVideos []Video `gorm:"many2many:video_favorites;" json:"-"`
 }
 
-type Message struct {
-	Id         int64  `json:"id,omitempty"`
-	Content    string `json:"content,omitempty"`
-	CreateTime string `json:"create_time,omitempty"`
+// User
+type User_relation struct {
+	Avatar          string `json:"avatar"`          // 用户头像
+	BackgroundImage string `json:"background_image"`// 用户个人页顶部大图
+	FavoriteCount   int64  `json:"favorite_count"`  // 喜欢数
+	FollowCount     int64  `json:"follow_count"`    // 关注总数
+	FollowerCount   int64  `json:"follower_count"`  // 粉丝总数
+	ID              int64  `json:"id"`              // 用户id
+	IsFollow        bool   `json:"is_follow"`       // true-已关注，false-未关注
+	Name            string `json:"name"`            // 用户名称
+	Signature       string `json:"signature"`       // 个人简介
+	TotalFavorited  string `json:"total_favorited"` // 获赞数量
+	WorkCount       int64  `json:"work_count"`      // 作品数
 }
+
+// Message
+type Message struct {
+	Content    string `json:"content"`     // 消息内容
+	CreateTime int64  `json:"create_time"` // 消息发送时间 yyyy-MM-dd HH:MM:ss
+	FromUserID int64  `json:"from_user_id"`// 消息发送者id
+	ID         int64  `json:"id"`          // 消息id
+	ToUserID   int64  `json:"to_user_id"`  // 消息接收者id
+}
+
 
 type MessageSendEvent struct {
 	UserId     int64  `json:"user_id,omitempty"`
