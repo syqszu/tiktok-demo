@@ -66,7 +66,7 @@ func Publish(c *gin.Context) {
 		return
 	}
 	// FFmpeg命令截图
-	cmd := exec.Command("ffmpeg", "-i", "public/"+finalName, "-ss", "1", "-vframes", "1", "img/"+finalName+".jpg")
+	cmd := exec.Command("ffmpeg", "-i", "public/"+finalName, "-ss", "1", "-vframes", "1", "public/"+finalName+".jpg")
 	err = cmd.Run() //运行
 	if err != nil {
 		fmt.Println(err)
@@ -76,11 +76,11 @@ func Publish(c *gin.Context) {
 
 	// 数据入库
 	video := Video{
-		AuthorID: user.Id,
-		Author:   user,
-		Title:    title,
-		PlayUrl:  VIDEO_SERVER_URL + "static/" + finalName, // 视频作为静态资源通过 /static/ 访问
-		CoverUrl:   VIDEO_SERVER_URL + "img/" + finalName + ".jpg", // 使用Ffpemg对视频切片获取封面
+		AuthorID:   user.Id,
+		Author:     user,
+		Title:      title,
+		PlayUrl:    VIDEO_SERVER_URL + "static/" + finalName,          // 视频作为静态资源通过 /static/ 访问
+		CoverUrl:   VIDEO_SERVER_URL + "static/" + finalName + ".jpg", // 使用Ffpemg对视频切片获取封面
 		UploadTime: time.Now().Unix(),
 	}
 
