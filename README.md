@@ -64,3 +64,72 @@ token验证和查询用户都可以使用Redis优化数据
 **关注列表用用户的token作为key，粉丝用户ID作为field，value为粉丝用户的json数据**
 
 user.go 在登录和注册的时候将用户数据注册进redis的哈希结构中，用 HSetNX（分布式锁）的方式存储，防止重复操作
+
+## 单元测试
+
+需要Mock的外部依赖：
+- 通过GORM框架进行的数据库操作
+- Gin框架实现的HTTP请求与响应
+
+### 数据库操作
+
+在各个路由的Handler中，我们经常使用GORM进行数据库操作，因此单元测试需要检验数据库操作是否复合预期。由于GORM在内部拼接SQL语句并发送给数据库处理，我们可以使用 [`go-sqlmock`](https://github.com/DATA-DOG/go-sqlmock) 模拟数据库操作，并对GORM输出给数据库的SQL语句进行检查。
+
+生成模拟的`*sql.DB`连接：
+```go
+mockDb, mock, err := sqlmock.New()
+if err != nil {
+t.Fatalf("Failed to create sqlmock: %s", err)
+}
+defer mockDb.Close()
+```
+
+由于被测试的函数通常需要接受一个`*gorm.DB`对象作为参数，或通过`*gin.Context`获取`*gorm.DB`对象，我们需要从模拟的数据库连接构建`*gorm.DB`：
+```go
+gormDb, err := gorm.Open(mysql.New(mysql.Config{
+Conn: mockDb,
+}), &gorm.Config{})
+
+if err != nil {
+t.Fatalf("Failed to create gorm database: %s", err)
+}
+```
+
+这个`*gorm.DB`对象可以被传递给被测试的函数用于测试。
+
+### HTTP请求与响应
+
+根据 [Gin 官方文档](https://gin-gonic.com/docs/testing/)，我们可以通过标准库`net/http/httptest`对HTTP请求和响应进行单元测试。
+
+首先需要构建`*gin.Engine`对象并配置需要测试的API路由：
+```go
+func setupRouter() *gin.Engine {
+r := gin.Default()
+r.GET("/ping", func(c *gin.Context) {
+c.String(200, "pong")
+})
+return r
+}
+```
+
+然后使用`net/http`构建测试的HTTP请求，并通过`gin.Engine.ServeHTTP()`模拟接收到的请求：
+```go
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestPingRoute(t *testing.T) {
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/ping", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, "pong", w.Body.String())
+}
+```
