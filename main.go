@@ -15,9 +15,9 @@ import (
 func main() {
 	//建立redis连接
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     controller.RDB_Addr,
-		Password: controller.RDB_PASSWORD, // no password set
-		DB:       controller.RDB_DB,       // use default DB
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
 	})
 
 	// 建立数据库连接
