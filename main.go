@@ -5,17 +5,16 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/syqszu/tiktok-demo/controller"
 	"github.com/syqszu/tiktok-demo/service"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"github.com/go-redis/redis/v8"
 )
-
 
 func main() {
 	//建立redis连接
-    rdb := redis.NewClient(&redis.Options{
+	rdb := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
@@ -28,7 +27,7 @@ func main() {
 		panic("Failed to connect to the database: " + err.Error())
 	}
 	fmt.Println("Connected to the database")
-    
+
 	// 配置连接池
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -66,7 +65,6 @@ func main() {
 	r := gin.Default()
 
 	// get ip address of this server
-    
 
 	r.Use(func(c *gin.Context) {
 		c.Set("db", db)
@@ -74,7 +72,7 @@ func main() {
 		c.Next()
 	}) // 注册数据库连接中间件
 
-	initRouter(r) // 初始化路由
+	controller.InitRouter(r) // 初始化路由
 
 	// TODO: read from config
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")

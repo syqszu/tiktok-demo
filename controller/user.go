@@ -15,9 +15,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-var usersLoginInfo = map[string]User{
-
-}
+var usersLoginInfo = map[string]User{}
 
 type UserLoginResponse struct {
 	Response
@@ -61,7 +59,7 @@ func Register(c *gin.Context) {
 	token := string(tokenBytes)
 
 	// 尝试在数据库中注册新用户
-	
+
 	newUser := User{
 		Name:  username,
 		Token: token,
@@ -70,7 +68,7 @@ func Register(c *gin.Context) {
 	err = db.Transaction(func(tx *gorm.DB) error {
 		// 校验是否已存在该用户名
 		var users []User
-    	result := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Find(&users, User{Name: username})
+		result := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Find(&users, User{Name: username})
 		if result.Error != nil {
 			fmt.Printf("Read user error: %v", result.Error)
 			return result.Error
@@ -95,26 +93,28 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	// 更新用户信息到内存映射
-	usersLoginInfo[newUser.Token] = newUser
-   
-	//更新到缓存
-    rdb := c.MustGet("rdb").(*redis.Client)
-	idStr := strconv.FormatInt(newUser.Id, 10)
-	//token
-	err = rdb.HSetNX(context.Background(),"token", idStr, newUser.Token).Err()//分布式锁
-    if err != nil {
-	panic(err)
-    }
-	//将user存入缓存
-	NewUser,err := json.Marshal(newUser)
-	if err != nil {
-		panic(err)
-		}
-	err = rdb.HSetNX(context.Background(),"user", newUser.Token,string(NewUser)).Err()//分布式锁
-    if err != nil {
-	panic(err)
-    }
+	// TODO: 使用 Redis 加速
+	
+	// // 更新用户信息到内存映射
+	// usersLoginInfo[newUser.Token] = newUser
+
+	// //更新到缓存
+	// rdb := c.MustGet("rdb").(*redis.Client)
+	// idStr := strconv.FormatInt(newUser.Id, 10)
+	// //token
+	// err = rdb.HSetNX(context.Background(), "token", idStr, newUser.Token).Err() //分布式锁
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// //将user存入缓存
+	// NewUser, err := json.Marshal(newUser)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// err = rdb.HSetNX(context.Background(), "user", newUser.Token, string(NewUser)).Err() //分布式锁
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// 返回注册成功响应
 	c.JSON(http.StatusOK, UserLoginResponse{
@@ -154,22 +154,22 @@ func Login(c *gin.Context) {
 		return
 	}
 
-    //登录成功后，将token缓存到redis
+	//登录成功后，将token缓存到redis
 	rdb := c.MustGet("rdb").(*redis.Client)
 	idStr := strconv.FormatInt(user.Id, 10)
-	err = rdb.HSetNX(context.Background(),"token",idStr, user.Token).Err()//分布式锁
-    if err != nil {
-	panic(err)
-    }
-    //将user存入缓存
-	NewUser,err := json.Marshal(user)
+	err = rdb.HSetNX(context.Background(), "token", idStr, user.Token).Err() //分布式锁
 	if err != nil {
 		panic(err)
-		}
-	err = rdb.HSetNX(context.Background(),"user", user.Token,string(NewUser)).Err()//分布式锁
-    if err != nil {
-	panic(err)
-    }
+	}
+	//将user存入缓存
+	NewUser, err := json.Marshal(user)
+	if err != nil {
+		panic(err)
+	}
+	err = rdb.HSetNX(context.Background(), "user", user.Token, string(NewUser)).Err() //分布式锁
+	if err != nil {
+		panic(err)
+	}
 
 	// 返回登录成功响应
 	c.JSON(http.StatusOK, UserLoginResponse{
@@ -185,8 +185,8 @@ func UserInfo(c *gin.Context) {
 
 	// 获取用户ID
 	userId := c.Query("user_id")
-    fmt.Println("用户id是",userId)
-	
+	fmt.Println("用户id是", userId)
+
 	id, err := strconv.ParseInt(userId, 10, 64)
 	if err != nil {
 		ReturnError(c, "无效用户ID", 1)
