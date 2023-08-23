@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"github.com/jlaffaye/ftp"
 )
 
 type VideoListResponse struct {
@@ -18,9 +19,9 @@ type VideoListResponse struct {
 }
 
 // FFmpeg转码操作...
-func transcodeVideo(finalName string) {
+func transcodeVideo(finalName string,user User,title string,db *gorm.DB,c *gin.Context) {
 	//视频转码压缩
-	cmd := exec.Command("ffmpeg", "-i", "public/"+finalName, "-c:v", "libx264", "-crf", "23", "-preset", "medium", "-c:a", "aac", "-b:a", "128k", "public/"+"new"+finalName)
+	cmd := exec.Command("FFmpeg/ffmpeg.exe", "-i", "public/"+finalName, "-c:v", "libx264", "-crf", "23", "-preset", "medium", "-c:a", "aac", "-b:a", "128k", "public/"+"new"+finalName)
 	err := cmd.Run() //运行
 	if err != nil {
 		fmt.Println(err)
@@ -31,7 +32,25 @@ func transcodeVideo(finalName string) {
 		fmt.Println("Error renaming file:", err)
 		return
 	}
-
+   
+		// 数据入库
+		video := Video{
+			AuthorID: user.Id,
+			Author:   user,
+			Title:    title,
+			PlayUrl:  VIDEO_SERVER_URL + "static/" + finalName, // 视频作为静态资源通过 /static/ 访问
+			// Fill the other fields as per your requirement
+			CoverUrl:   VIDEO_SERVER_URL + "img/" + finalName + ".jpg", // TODO: 使用Ffpemg对视频切片获取封面
+			UploadTime: time.Now().Unix(),
+		}
+	
+		if err := db.Create(&video).Error; err != nil {
+			c.JSON(http.StatusOK, Response{
+				StatusCode: 1,
+				StatusMsg:  err.Error(),
+			})
+			return
+		}
 }
 
 // Publish check token then save upload file to public directory
@@ -54,43 +73,40 @@ func Publish(c *gin.Context) {
 		})
 		return
 	}
-
-	filename := filepath.Base(data.Filename)
-	finalName := fmt.Sprintf("%d_%s", user.Id, filename)
-	saveFile := filepath.Join("./public/", finalName)
-	if err := c.SaveUploadedFile(data, saveFile); err != nil {
+	//打开文件
+	fileReader,err := data.Open()
+	if err != nil {
 		c.JSON(http.StatusOK, Response{
 			StatusCode: 1,
 			StatusMsg:  err.Error(),
 		})
 		return
 	}
+	defer fileReader.Close()
+	ftpConn := c.MustGet("ftpConn").(*ftp.ServerConn)
+
+	filename := filepath.Base(data.Filename)
+	finalName := fmt.Sprintf("%d_%s", user.Id, filename)
+
+	 // 上传文件到FTP服务器,位置指定为public
+	 err = ftpConn.Stor(finalName, fileReader)
+	 if err != nil {
+		fmt.Println(err.Error())
+		c.JSON(http.StatusOK, Response{
+			StatusCode: 1,
+			StatusMsg:  err.Error(),
+		})
+		return
+	 }
+
 	// FFmpeg命令截图
-	cmd := exec.Command("ffmpeg", "-i", "public/"+finalName, "-ss", "1", "-vframes", "1", "img/"+finalName+".jpg")
+	cmd := exec.Command("FFmpeg/ffmpeg.exe", "-i", "public/"+finalName, "-ss", "1", "-vframes", "1", "img/"+finalName+".jpg")
 	err = cmd.Run() //运行
 	if err != nil {
 		fmt.Println(err)
 	}
-	//视频转码压缩
-	go transcodeVideo(finalName) //异步操作防止程序返回错误
-
-	// 数据入库
-	video := Video{
-		AuthorID: user.Id,
-		Author:   user,
-		Title:    title,
-		PlayUrl:  VIDEO_SERVER_URL + "static/" + finalName, // 视频作为静态资源通过 /static/ 访问
-		CoverUrl:   VIDEO_SERVER_URL + "img/" + finalName + ".jpg", // 使用Ffpemg对视频切片获取封面
-		UploadTime: time.Now().Unix(),
-	}
-
-	if err := db.Create(&video).Error; err != nil {
-		c.JSON(http.StatusOK, Response{
-			StatusCode: 1,
-			StatusMsg:  err.Error(),
-		})
-		return
-	}
+	//视频转码压缩，并入库
+	go transcodeVideo(finalName,user,title,db,c) //异步操作防止程序返回错误
 
 	// 返回成功信息
 	c.JSON(http.StatusOK, Response{
