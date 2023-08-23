@@ -66,6 +66,9 @@ func RelationAction(c *gin.Context) {
 		idStr := strconv.FormatInt(user.Id, 10)
 		ToUser_Id:= strconv.FormatInt(ToUser.Id, 10)
 		NewToUser,err := json.Marshal(ToUser) //json
+		if err != nil {
+			panic(err)
+	} 
 		NewUser,err := json.Marshal(user) //json
 		if err != nil {
 				panic(err)
@@ -158,12 +161,47 @@ func FollowerList(c *gin.Context) {
 	})
 }
 
-// 好友列表所有用户都有相同的好友列表
+// 好友列表所有用户关注者和被关注者是好友关系
 func FriendList(c *gin.Context) {
+	var userlist []User
+    id := c.Query("user_id")
+	token := c.Query("token")
+	rdb := c.MustGet("rdb").(*redis.Client)
+	data, err := rdb.HGetAll(context.Background(),id).Result()
+	if err != nil {
+		panic(err)
+	}
+	FollowData, err := rdb.HGetAll(context.Background(),token).Result() //粉丝用户
+	if err != nil {
+		panic(err)
+	}
+
+	// data是一个map类型，val是string型,这里使用使用循环迭代输出
+	//json字符串转成user结构体传入userlist
+	if len(data) != 0{  
+		for _, val := range data {
+			var user User
+			err := json.Unmarshal([]byte(val) , &user)
+			if err != nil{
+				panic(err)
+			}
+			userlist = append(userlist, user) //将自己关注的用户加入列表
+		  }
+	} 
+	if len(FollowData) != 0{  
+		for _, val := range FollowData {
+			var user User
+			err := json.Unmarshal([]byte(val) , &user)
+			if err != nil{
+				panic(err)
+			}
+			userlist = append(userlist, user) //将自己的粉丝加入列表
+		  }
+	} 
 	c.JSON(http.StatusOK, UserListResponse{
 		Response: Response{
 			StatusCode: 0,
 		},
-		UserList: []User{DemoUser},
+		UserList: userlist,
 	})
 }
