@@ -32,3 +32,6 @@ img
 .1024feature*
 .nfs*
 node_modules
+
+# scripts
+run.*
