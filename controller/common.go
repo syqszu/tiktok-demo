@@ -1,12 +1,5 @@
 package controller
 
-var (
-	VIDEO_SERVER_URL string = "http://192.168.3.85:8080/" // 填写本机IP地址与服务器端口
-	DB_SERVER        string = "127.0.0.1:3306"
-	DB_USER          string = "root"
-	DB_PASSWORD      string = "123456"
-)
-
 type Response struct {
 	StatusCode int32  `json:"status_code"`
 	StatusMsg  string `json:"status_msg,omitempty"`
