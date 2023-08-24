@@ -16,7 +16,7 @@ $env:REDISCLI_AUTH = ""
 $env:REDIS_PORT = ""
 
 # Object Storage
-$env:VIDEO_SERVER_URL = "" # 填写HTTP服务端IP地址与端口
+$env:VIDEO_SERVER_URL = "http://192.168.3.85:8080/" # 填写HTTP服务端IP地址与端口
 
 # Run tiktok-demo.exe
 & ".\$PROJECT_NAME.exe"
