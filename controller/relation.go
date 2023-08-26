@@ -66,6 +66,9 @@ func RelationAction(c *gin.Context) {
 		idStr := strconv.FormatInt(user.Id, 10)
 		ToUser_Id:= strconv.FormatInt(ToUser.Id, 10)
 		NewToUser,err := json.Marshal(ToUser) //json
+		if err != nil {
+			panic(err)
+	} 
 		NewUser,err := json.Marshal(user) //json
 		if err != nil {
 				panic(err)

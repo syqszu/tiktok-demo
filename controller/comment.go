@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -22,7 +23,6 @@ type CommentActionResponse struct {
 // Handles /douyin/comment/action
 func CommentAction(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
-	
 	token := c.Query("token")
 	actionType := c.Query("action_type")
 	videoID, _ := strconv.ParseInt(c.Query("video_id"), 10, 64)
@@ -50,6 +50,19 @@ func CommentAction(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, Response{StatusCode: 1, StatusMsg: err.Error()})
 			return
 		}
+		var video Video
+		if err := db.First(&video, Video{Id: videoID}).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
+			fmt.Printf("comment failed to find video 56: %v", err)
+			return
+		}
+		//在视频中记录
+		video.CommentCount = video.CommentCount + 1
+		if err := db.Model(&Video{}).Where("Id = ?", video.Id).Updates(&video).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
+			fmt.Printf("comment failed to update video : %v", err)
+			return
+		}
 		c.JSON(http.StatusOK, CommentActionResponse{
 			Response: Response{StatusCode: 0},
 			Comment:  comment,
@@ -59,6 +72,19 @@ func CommentAction(c *gin.Context) {
 		var comment Comment
 		if err := db.Where("id = ?", commentID).Delete(&comment).Error; err != nil {
 			c.JSON(http.StatusOK, Response{StatusCode: 1, StatusMsg: err.Error()})
+			return
+		}
+		var video Video
+		if err := db.First(&video, Video{Id: videoID}).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
+			fmt.Printf("comment failed to find video 80: %v", err)
+			return
+		}
+		//在视频中记录
+		video.CommentCount = video.CommentCount - 1
+		if err := db.Model(&Video{}).Where("Id = ?", video.Id).Updates(&video).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
+			fmt.Printf("comment failed to update video: %v", err)
 			return
 		}
 		c.JSON(http.StatusOK, Response{StatusCode: 0})

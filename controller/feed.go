@@ -49,7 +49,7 @@ func Feed(c *gin.Context) {
 			Limit(30).                                               // 限制返回30条
 			Find(&videos)
 	}
-	
+
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, Response{
 			StatusCode: 1,
@@ -57,9 +57,18 @@ func Feed(c *gin.Context) {
 		})
 	}
 
-	// Use demo video if there is no video in database
-	if len(videos) == 0 {
-		videos = append(videos, DemoVideo)
+	// 尝试获取用户信息，确认获取的视频是否点过赞
+	token := c.Query("token")
+	var user User
+	if err := db.Preload("FavoritedVideos").First(&user, User{Token: token}).Error; err != nil {
+		// 用户已登录
+		for _, v := range videos {
+			for _, f := range user.FavoritedVideos {
+				if v.Id == f.Id {
+					v.IsFavorite = true
+				}
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, FeedResponse{
