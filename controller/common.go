@@ -13,7 +13,7 @@ type Video struct {
 	CoverUrl      string `gorm:"size:255" json:"cover_url,omitempty"`
 	FavoriteCount int64  `json:"favorite_count,omitempty"`
 	CommentCount  int64  `json:"comment_count,omitempty"`
-	IsFavorite    bool   `gorm:"-" json:"is_favorite,omitempty"` // 在返回时根据用户是否收藏该视频进行赋值，不保存在数据库中
+	IsFavorite    bool   `gorm:"-" json:"is_favorite"` // 在返回时根据用户是否收藏该视频进行赋值，不保存在数据库中
 	UploadTime    int64  `json:"-"`
 	Title         string `json:"title"` // 视频标题
 }
