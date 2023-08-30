@@ -53,14 +53,6 @@ func FavoriteAction(c *gin.Context) {
 
 	if action == FAVOURITE_ACTION_TYPE_UNFAVOURITE { // 取消点赞
 
-		//找到,更新视频点赞数
-		video.FavoriteCount = video.FavoriteCount - 1
-		if err := db.Model(&Video{}).Where("Id = ?", video.Id).Updates(&video).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
-			fmt.Printf("failed to update video: %v", err)
-			return
-		}
-
 		// 检查是否没有点赞
 		var favourited bool = false
 		for _, v := range user.FavoritedVideos {
@@ -75,6 +67,14 @@ func FavoriteAction(c *gin.Context) {
 			return
 		}
 
+		//找到,更新视频点赞数
+		video.FavoriteCount = video.FavoriteCount - 1
+		if err := db.Model(&Video{}).Where("Id = ?", video.Id).UpdateColumn("FavoriteCount", video.FavoriteCount).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
+			fmt.Printf("failed to update video: %v", err)
+			return
+		}
+
 		// 重复取消点赞时，表中没有对应的video_id，操作会被忽略
 
 		if err := db.Model(&user).Association("FavoritedVideos").Delete(&video); err != nil {
@@ -84,15 +84,6 @@ func FavoriteAction(c *gin.Context) {
 		}
 	} else { // 记录点赞
 
-		//找到,更新视频点赞数
-
-		video.FavoriteCount = video.FavoriteCount + 1
-		if err := db.Model(&Video{}).Where("Id = ?", video.Id).Updates(&video).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
-			fmt.Printf("failed to update video: %v", err)
-			return
-		}
-
 		// 检查是否已经点赞
 		fmt.Print(user.FavoritedVideos)
 		for _, v := range user.FavoritedVideos {
@@ -100,6 +91,15 @@ func FavoriteAction(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, Response{StatusCode: 1, StatusMsg: "video_id already favorited"})
 				return
 			}
+		}
+
+		//找到,更新视频点赞数
+
+		video.FavoriteCount = video.FavoriteCount + 1
+		if err := db.Model(&Video{}).Where("Id = ?", video.Id).UpdateColumn("FavoriteCount", video.FavoriteCount).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, Response{StatusCode: -1, StatusMsg: "Internal error"})
+			fmt.Printf("failed to update video: %v", err)
+			return
 		}
 
 		// 添加点赞记录
