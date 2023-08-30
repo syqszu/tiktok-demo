@@ -5,6 +5,11 @@ FROM golang:latest
 WORKDIR /app
 COPY . .
 
+# Install ffmpeg
+RUN apt-get update && \
+    apt-get install -y ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+    
 # Install dependencies
 RUN go mod download
 
