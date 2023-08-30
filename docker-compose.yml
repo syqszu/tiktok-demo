@@ -1,0 +1,37 @@
+version: '3'
+
+services:
+
+  web:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+      - mysql
+    environment:
+
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: rootpassword
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDISCLI_AUTH: ""
+
+      VIDEO_SERVER_URL: ${VIDEO_SERVER_URL} # Host ip:8080, set by the host
+
+  redis:
+    image: "redis:latest"
+
+  mysql:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: douyindemo
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+volumes:
+    mysql-data:
