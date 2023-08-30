@@ -71,9 +71,14 @@ func Feed(c *gin.Context) {
 		}
 	}
 
+	nextTime := int64(0)
+	if len(videos) > 0 {
+		nextTime = videos[len(videos)-1].UploadTime
+	}
+
 	c.JSON(http.StatusOK, FeedResponse{
 		Response:  Response{StatusCode: 0},
 		VideoList: videos,
-		NextTime:  videos[len(videos)-1].UploadTime, // 返回最旧视频的投稿时间
+		NextTime:  nextTime, // 返回最旧视频的投稿时间
 	})
 }

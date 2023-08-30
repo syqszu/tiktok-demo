@@ -41,9 +41,20 @@ func InitServices() (*gorm.DB, *redis.Client) {
 	// 建立mysql连接
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/douyindemo?charset=utf8mb4&parseTime=True&loc=Local", MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST+":"+MYSQL_PORT)
 
-	mysql_db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	var mysql_db *gorm.DB
+	var err error
+
+	for retries := 0; retries < 60; retries++ {
+		mysql_db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+		if err == nil {
+			break
+		}
+		fmt.Println("Failed to connect to the database. Retrying in 1 second...")
+		time.Sleep(1 * time.Second)
+	}
+
 	if err != nil {
-		panic("Failed to connect to the database: " + err.Error())
+		panic("Failed to connect to the database after 60 attempts: " + err.Error())
 	}
 
 	// 配置连接池
